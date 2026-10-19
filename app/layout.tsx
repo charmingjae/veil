@@ -17,7 +17,7 @@ interface RootLayoutProps {
 
 const RootLayout = ({ children }: RootLayoutProps) => {
   return (
-    <html lang="ko">
+    <html lang="en">
       <body>
         <Providers>{children}</Providers>
       </body>
