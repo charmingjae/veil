@@ -39,16 +39,6 @@ pnpm build   # builds the package, then the playground
 pnpm lint    # Biome on everything, Steiger on the playground
 ```
 
-## Releasing
-
-From `packages/veil`, after bumping `version` in its `package.json`:
-
-```bash
-pnpm publish --access public --otp <code>
-```
-
-`prepublishOnly` builds the package first, and only `dist`, `README.md` and `LICENSE` are published.
-
 ## License
 
 [MIT](./LICENSE)
