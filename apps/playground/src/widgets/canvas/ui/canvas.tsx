@@ -1,23 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import {
+  Veil,
+  type VeilEffect,
+  type VeilHandle,
+  type VeilTexture,
+  type VeilWindDirection,
+} from "@-3-/veil";
+import { useRef, useState } from "react";
 
 import { Sidebar, SidebarContent, SidebarProvider, SidebarTrigger } from "@/shared/ui/sidebar";
 
 import { BrushControls } from "./brush-controls";
-import { Drawer, type DrawerEffect, type DrawerTexture, type DrawerWindDirection } from "./drawer";
-import { DrawerCode } from "./drawer-code";
-import { DrawerControls } from "./drawer-controls";
 import { EffectControls } from "./effect-controls";
 import { SizeControls } from "./size-controls";
+import { StateControls } from "./state-controls";
+import { TextureControls } from "./texture-controls";
+import { VeilCode } from "./veil-code";
 
 export const Canvas = () => {
-  const [texture, setTexture] = useState<DrawerTexture>("noise");
-  const [effect, setEffect] = useState<DrawerEffect>("float");
-  const [windDirection, setWindDirection] = useState<DrawerWindDirection>("right");
+  const [texture, setTexture] = useState<VeilTexture>("noise");
+  const [effect, setEffect] = useState<VeilEffect>("float");
+  const [windDirection, setWindDirection] = useState<VeilWindDirection>("right");
   const [brushSize, setBrushSize] = useState(50);
   const [width, setWidth] = useState<number | null>(null);
   const [height, setHeight] = useState<number | null>(null);
+  const [revealedPercent, setRevealedPercent] = useState(0);
+  const [revealThreshold, setRevealThreshold] = useState(50);
+  const veilRef = useRef<VeilHandle>(null);
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -25,11 +35,14 @@ export const Canvas = () => {
       <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden p-6">
         {/* Flipped so the panel icon points at the right-hand sidebar. */}
         <SidebarTrigger className="absolute top-2 right-2 [&>svg]:rotate-180" />
-        <Drawer
+        <Veil
+          ref={veilRef}
           texture={texture}
           effect={effect}
           windDirection={windDirection}
           brushSize={brushSize}
+          revealThreshold={revealThreshold}
+          onReveal={setRevealedPercent}
         >
           <div
             className="flex max-w-full flex-col items-center justify-center"
@@ -38,19 +51,26 @@ export const Canvas = () => {
             <p className="font-bold">Veil</p>
             <p className="font-extralight text-muted-foreground">Every surface hides a story</p>
           </div>
-        </Drawer>
-        <DrawerCode
+        </Veil>
+        <VeilCode
           texture={texture}
           effect={effect}
           windDirection={windDirection}
           brushSize={brushSize}
+          revealThreshold={revealThreshold}
           width={width}
           height={height}
         />
       </div>
       <Sidebar side="right" variant="floating">
         <SidebarContent>
-          <DrawerControls texture={texture} onTextureChange={setTexture} />
+          <StateControls
+            revealedPercent={revealedPercent}
+            revealThreshold={revealThreshold}
+            onRevealThresholdChange={setRevealThreshold}
+            onReset={() => veilRef.current?.reset()}
+          />
+          <TextureControls texture={texture} onTextureChange={setTexture} />
           <EffectControls
             effect={effect}
             windDirection={windDirection}

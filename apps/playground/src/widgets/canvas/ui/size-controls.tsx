@@ -10,7 +10,7 @@ interface SizeControlsProps {
   onHeightChange: (height: number | null) => void;
 }
 
-// The control panel for the size of the content under `Drawer`, which the drawer follows.
+// The control panel for the size of the content under `Veil`, which the veil follows.
 export const SizeControls = ({
   width,
   height,
@@ -22,7 +22,7 @@ export const SizeControls = ({
       <SidebarGroupLabel>Size</SidebarGroupLabel>
       <SidebarGroupContent className="flex flex-col gap-3 px-2">
         <FieldDescription>
-          The size of the content under the drawer, which the drawer follows. Leave empty to fit the
+          The size of the content under the veil, which the veil follows. Leave empty to fit the
           content.
         </FieldDescription>
         <div className="flex gap-3">

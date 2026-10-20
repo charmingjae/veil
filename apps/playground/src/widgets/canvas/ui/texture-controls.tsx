@@ -1,9 +1,9 @@
+import type { VeilTexture } from "@-3-/veil";
+
 import { RadioGroup } from "@/shared/ui/radio-group";
 import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel } from "@/shared/ui/sidebar";
 
-import type { DrawerTexture } from "./drawer";
-
-const TEXTURE_OPTIONS: { value: DrawerTexture; label: string }[] = [
+const TEXTURE_OPTIONS: { value: VeilTexture; label: string }[] = [
   { value: "plain", label: "Plain" },
   { value: "noise", label: "Noise" },
   { value: "mosaic", label: "Mosaic" },
@@ -14,13 +14,13 @@ const TEXTURE_OPTIONS: { value: DrawerTexture; label: string }[] = [
   { value: "dither", label: "Dither" },
 ];
 
-interface DrawerControlsProps {
-  texture: DrawerTexture;
-  onTextureChange: (texture: DrawerTexture) => void;
+interface TextureControlsProps {
+  texture: VeilTexture;
+  onTextureChange: (texture: VeilTexture) => void;
 }
 
-// The control panel for the props `Drawer` takes.
-export const DrawerControls = ({ texture, onTextureChange }: DrawerControlsProps) => {
+// The control panel for the props `Veil` takes.
+export const TextureControls = ({ texture, onTextureChange }: TextureControlsProps) => {
   return (
     <SidebarGroup>
       <SidebarGroupLabel id="texture-label">Texture</SidebarGroupLabel>
@@ -31,7 +31,7 @@ export const DrawerControls = ({ texture, onTextureChange }: DrawerControlsProps
           className="**:data-[slot=radio-group-item]:not-data-checked:bg-background"
           options={TEXTURE_OPTIONS}
           value={texture}
-          onChange={(value) => onTextureChange(value as DrawerTexture)}
+          onChange={(value) => onTextureChange(value as VeilTexture)}
         />
       </SidebarGroupContent>
     </SidebarGroup>

@@ -1,10 +1,9 @@
+import type { VeilEffect, VeilTexture, VeilWindDirection } from "@-3-/veil";
 import { cn } from "cn";
 import { useEffect, useState } from "react";
 
 import { CodeBlockCopyButton } from "@/shared/ui/code-block";
 import { useSidebar } from "@/shared/ui/sidebar";
-
-import type { DrawerEffect, DrawerTexture, DrawerWindDirection } from "./drawer";
 
 // How long each character takes to appear while the code types itself out, in milliseconds.
 const TYPING_INTERVAL = 15;
@@ -36,27 +35,29 @@ const getChangedRange = (before: string, after: string): Typing | null => {
   return end > start ? { start, end, count: 0 } : null;
 };
 
-interface DrawerCodeProps {
-  texture: DrawerTexture;
-  effect: DrawerEffect;
-  windDirection: DrawerWindDirection;
+interface VeilCodeProps {
+  texture: VeilTexture;
+  effect: VeilEffect;
+  windDirection: VeilWindDirection;
   brushSize: number;
+  revealThreshold: number;
   /** The content's size, in pixels; `null` leaves it to the content. */
   width: number | null;
   height: number | null;
 }
 
-// Shows the JSX that renders `Drawer` with the current settings, while the settings sidebar is open.
+// Shows the JSX that renders `Veil` with the current settings, while the settings sidebar is open.
 // Each time it opens, the code types itself out one character at a time; after that, a setting
 // change types out just the part of the code it changed.
-export const DrawerCode = ({
+export const VeilCode = ({
   texture,
   effect,
   windDirection,
   brushSize,
+  revealThreshold,
   width,
   height,
-}: DrawerCodeProps) => {
+}: VeilCodeProps) => {
   const { isMobile, open, openMobile } = useSidebar();
   const isShown = isMobile ? openMobile : open;
 
@@ -65,10 +66,11 @@ export const DrawerCode = ({
     .join(", ");
   const content = contentStyle ? `<div style={{ ${contentStyle} }}>{children}</div>` : "{children}";
   const lines = [
-    // `windDirection` only matters to the wind effect, so it shows only then.
-    `<Drawer texture="${texture}" effect="${effect}"${effect === "wind" ? ` windDirection="${windDirection}"` : ""} brushSize={${brushSize}}>`,
+    // `windDirection` only matters to the wind effect, and `revealThreshold` only shows once moved
+    // off its default of 50.
+    `<Veil texture="${texture}" effect="${effect}"${effect === "wind" ? ` windDirection="${windDirection}"` : ""} brushSize={${brushSize}}${revealThreshold === 50 ? "" : ` revealThreshold={${revealThreshold}}`}>`,
     `  ${content}`,
-    "</Drawer>",
+    "</Veil>",
   ];
   const code = lines.join("\n");
 
@@ -117,9 +119,9 @@ export const DrawerCode = ({
     );
   });
 
-  // The `Drawer` lines are what to copy; the content line only stands in for your own content.
+  // The `Veil` lines are what to copy; the content line only stands in for your own content.
   return (
-    // Grows from zero height and fades in, in step with the sidebar sliding open, so the drawer
+    // Grows from zero height and fades in, in step with the sidebar sliding open, so the veil
     // above glides up instead of jumping. `inert` keeps the hidden copy button out of tab order.
     <div
       inert={!isShown}

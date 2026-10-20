@@ -65,7 +65,7 @@
   },
   "overrides": [
     {
-      "includes": ["*.config.ts", "*.config.mjs", "app/**"],
+      "includes": ["**/*.config.ts", "**/*.config.mjs", "apps/playground/app/**"],
       "linter": {
         "rules": {
           "style": { "noDefaultExport": "off" }

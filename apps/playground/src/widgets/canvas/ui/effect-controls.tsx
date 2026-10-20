@@ -1,3 +1,4 @@
+import type { VeilEffect, VeilWindDirection } from "@-3-/veil";
 import {
   ArrowDownIcon,
   ArrowDownLeftIcon,
@@ -15,9 +16,7 @@ import { RadioGroup } from "@/shared/ui/radio-group";
 import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel } from "@/shared/ui/sidebar";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/ui/toggle-group";
 
-import type { DrawerEffect, DrawerWindDirection } from "./drawer";
-
-const EFFECT_OPTIONS: { value: DrawerEffect; label: string }[] = [
+const EFFECT_OPTIONS: { value: VeilEffect; label: string }[] = [
   { value: "float", label: "Float" },
   { value: "sand", label: "Sand" },
   { value: "scatter", label: "Scatter" },
@@ -29,7 +28,7 @@ const EFFECT_OPTIONS: { value: DrawerEffect; label: string }[] = [
 ];
 
 // In grid order, row by row, so each arrow sits where it points.
-const WIND_DIRECTION_OPTIONS: { value: DrawerWindDirection; label: string; icon: LucideIcon }[] = [
+const WIND_DIRECTION_OPTIONS: { value: VeilWindDirection; label: string; icon: LucideIcon }[] = [
   { value: "up-left", label: "Up left", icon: ArrowUpLeftIcon },
   { value: "up", label: "Up", icon: ArrowUpIcon },
   { value: "up-right", label: "Up right", icon: ArrowUpRightIcon },
@@ -42,13 +41,13 @@ const WIND_DIRECTION_OPTIONS: { value: DrawerWindDirection; label: string; icon:
 ];
 
 interface EffectControlsProps {
-  effect: DrawerEffect;
-  windDirection: DrawerWindDirection;
-  onEffectChange: (effect: DrawerEffect) => void;
-  onWindDirectionChange: (windDirection: DrawerWindDirection) => void;
+  effect: VeilEffect;
+  windDirection: VeilWindDirection;
+  onEffectChange: (effect: VeilEffect) => void;
+  onWindDirectionChange: (windDirection: VeilWindDirection) => void;
 }
 
-// The control panel for how `Drawer`'s cleared pixels leave the cover. Wind adds a direction pad.
+// The control panel for how `Veil`'s cleared pixels leave the cover. Wind adds a direction pad.
 export const EffectControls = ({
   effect,
   windDirection,
@@ -63,7 +62,7 @@ export const EffectControls = ({
           aria-labelledby="effect-label"
           options={EFFECT_OPTIONS}
           value={effect}
-          onChange={(value) => onEffectChange(value as DrawerEffect)}
+          onChange={(value) => onEffectChange(value as VeilEffect)}
           // White circles, so they stand out on the sidebar's gray; a checked one keeps its fill.
           className="**:data-[slot=radio-group-item]:not-data-checked:bg-background"
         />
@@ -78,7 +77,7 @@ export const EffectControls = ({
               // Pressing the pressed arrow again would leave none pressed, so that is ignored.
               onValueChange={([value]) => {
                 if (value) {
-                  onWindDirectionChange(value as DrawerWindDirection);
+                  onWindDirectionChange(value as VeilWindDirection);
                 }
               }}
               variant="outline"

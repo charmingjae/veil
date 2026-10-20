@@ -1,13 +1,12 @@
 {
-  "name": "veil",
+  "name": "veil-workspace",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "biome check && steiger ./src",
+    "dev": "pnpm --filter @-3-/veil build && pnpm --parallel --filter @-3-/veil --filter playground dev",
+    "build": "pnpm --recursive build",
+    "lint": "biome check && pnpm --recursive --if-present lint",
     "lint:fix": "biome check --write"
   },
   "engines": {
@@ -21,33 +20,7 @@
     }
   },
   "packageManager": "pnpm@12.11.2",
-  "dependencies": {
-    "@base-ui/react": "^1.9.0",
-    "@fontsource-variable/inter": "^5.3.0",
-    "@hookform/resolvers": "^5.9.1",
-    "class-variance-authority": "^0.7.1",
-    "cn": "^0.4.0",
-    "date-fns": "^4.4.0",
-    "lucide-react": "^1.56.0",
-    "next": "16.4.2",
-    "react": "^19.3.0",
-    "react-day-picker": "^10.0.2",
-    "react-dom": "^19.3.0",
-    "react-hook-form": "^7.90.0",
-    "sonner": "^2.0.8",
-    "tw-animate-css": "^1.4.0",
-    "zod": "^4.6.7"
-  },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
-    "@feature-sliced/steiger-plugin": "^0.8.0",
-    "@tailwindcss/postcss": "4.3.3",
-    "@types/node": "^24.19.2",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "shadcn": "^4.21.4",
-    "steiger": "^0.7.0",
-    "tailwindcss": "^4.3.3",
-    "typescript": "^7.0.2"
+    "@biomejs/biome": "^2.5.15"
   }
 }

@@ -11,7 +11,7 @@ interface BrushControlsProps {
   onBrushSizeChange: (brushSize: number) => void;
 }
 
-// The control panel for how `Drawer` clears its cover.
+// The control panel for how `Veil` clears its cover.
 export const BrushControls = ({ brushSize, onBrushSizeChange }: BrushControlsProps) => {
   return (
     <SidebarGroup>
