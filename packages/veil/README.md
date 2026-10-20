@@ -2,6 +2,8 @@
 
 A React cover that hides its content until the pointer scratches it away. Cleared pixels fly off as particles: floating, falling, blown by the wind, or burning to ash.
 
+**[Try every texture and effect in the demo →](https://charmingjae.github.io/veil/)**
+
 ```bash
 npm install @-3-/veil
 # or
@@ -76,7 +78,7 @@ export const Card = () => {
 | --- | --- |
 | `float` | drift up |
 | `sand` | fall, faster and faster |
-| `scatter` | burst outward from the brush |
+| `scatter` | burst outward from the stroke |
 | `dissolve` | fade where they were |
 | `wind` | blow away in `windDirection` |
 | `snow` | drift down, swaying |
