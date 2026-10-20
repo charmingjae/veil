@@ -365,10 +365,11 @@ export const Drawer = ({ texture, brushSize, children }: DrawerProps) => {
 
   return (
     // The canvases let pointer events through, so the wrapper scratches and `children` still get
-    // hovers and (cleared-pixel) clicks.
+    // hovers and (cleared-pixel) clicks. `touch-none` keeps a finger dragging over it from
+    // scrolling the page instead, which would cancel the pointer after the first move.
     <div
       ref={wrapperRef}
-      className="relative w-fit max-w-full"
+      className="relative w-fit max-w-full touch-none"
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       onClickCapture={handleClickCapture}

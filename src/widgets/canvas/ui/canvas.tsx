@@ -23,10 +23,11 @@ export const Canvas = () => {
         <SidebarTrigger className="absolute top-2 right-2 [&>svg]:rotate-180" />
         <Drawer texture={texture} brushSize={brushSize}>
           <div
-            className="flex max-w-full items-center justify-center"
+            className="flex max-w-full flex-col items-center justify-center"
             style={{ width: width ?? undefined, height: height ?? undefined }}
           >
-            <p>Every surface hides a story</p>
+            <p className="font-bold">Veil</p>
+            <p className="font-extralight text-muted-foreground">Every surface hides a story</p>
           </div>
         </Drawer>
         <DrawerCode texture={texture} brushSize={brushSize} width={width} height={height} />
