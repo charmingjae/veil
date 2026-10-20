@@ -8,6 +8,7 @@
     "build": "pnpm --recursive build",
     "lint": "biome check && pnpm --recursive --if-present lint",
     "lint:fix": "biome check --write",
+    "typecheck": "pnpm --filter @-3-/veil build && pnpm --recursive typecheck",
     "capture:textures": "pnpm build && node scripts/capture-textures.ts",
     "capture:effects": "pnpm build && node scripts/capture-effects.ts",
     "capture:og": "pnpm build && node scripts/capture-og.ts"

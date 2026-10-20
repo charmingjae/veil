@@ -1,4 +1,4 @@
-import { Canvas } from "@/widgets/canvas";
+import { Canvas } from "./canvas";
 
 export const HomePage = () => {
   return <Canvas />;

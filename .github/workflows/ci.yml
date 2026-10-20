@@ -1,0 +1,42 @@
+# Checks every pull request into main, and every push to it: lint, types, both builds, and the
+# package as it would be published.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Read-only, so pull requests from forks can't reach anything else in the repository.
+permissions:
+  contents: read
+
+# A newer commit on the same branch or pull request cancels the check still running for the last one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Installs the pnpm version in package.json's `packageManager`.
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      # Fails if pnpm-lock.yaml doesn't match the package.json files.
+      - run: pnpm install --frozen-lockfile
+      # The package first, then the playground, whose types and build use the package's dist.
+      - name: Build
+        run: pnpm build
+      - name: Lint
+        run: pnpm lint
+      - name: Type check
+        run: pnpm --recursive typecheck
+      # publint and arethetypeswrong on the package as `npm pack` would publish it.
+      - name: Check the package
+        run: pnpm --filter @-3-/veil check

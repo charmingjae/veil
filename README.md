@@ -49,6 +49,7 @@ pnpm install
 pnpm dev     # builds the package, then rebuilds it on change while the playground runs
 pnpm build   # builds the package, then the playground
 pnpm lint    # Biome on everything, Steiger on the playground
+pnpm typecheck   # builds the package, then type-checks it and the playground
 pnpm capture:textures   # rebuilds docs/images/textures.png from the playground
 pnpm capture:effects    # rebuilds docs/images/effects/*.gif from the playground
 ```
