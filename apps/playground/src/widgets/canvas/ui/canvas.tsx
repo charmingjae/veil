@@ -13,6 +13,7 @@ import { Sidebar, SidebarContent, SidebarProvider, SidebarTrigger } from "@/shar
 
 import { BrushControls } from "./brush-controls";
 import { EffectControls } from "./effect-controls";
+import { GithubLink } from "./github-link";
 import { SizeControls } from "./size-controls";
 import { StateControls } from "./state-controls";
 import { TextureControls } from "./texture-controls";
@@ -33,8 +34,11 @@ export const Canvas = () => {
     <SidebarProvider defaultOpen={false}>
       {/* `overflow-hidden` clips pixels flying off past the edges, so they never add a scrollbar. */}
       <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden p-6">
-        {/* Flipped so the panel icon points at the right-hand sidebar. */}
-        <SidebarTrigger className="absolute top-2 right-2 [&>svg]:rotate-180" />
+        <div className="absolute top-2 right-2 flex items-center gap-1">
+          <GithubLink />
+          {/* Flipped so the panel icon points at the right-hand sidebar. */}
+          <SidebarTrigger className="[&>svg]:rotate-180" />
+        </div>
         <Veil
           ref={veilRef}
           texture={texture}

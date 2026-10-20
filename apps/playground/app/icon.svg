@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <title>Veil</title>
+  <rect width="32" height="32" rx="7" fill="#0a0a0a"/>
+  <path d="M8 23 L24 11" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  <rect x="21" y="5" width="2" height="2" fill="#f97316"/>
+  <rect x="26" y="8" width="2" height="2" fill="#fdba74"/>
+  <rect x="24" y="3" width="1.5" height="1.5" fill="#fb923c"/>
+</svg>

@@ -9,7 +9,8 @@
     "lint": "biome check && pnpm --recursive --if-present lint",
     "lint:fix": "biome check --write",
     "capture:textures": "pnpm build && node scripts/capture-textures.ts",
-    "capture:effects": "pnpm build && node scripts/capture-effects.ts"
+    "capture:effects": "pnpm build && node scripts/capture-effects.ts",
+    "capture:og": "pnpm build && node scripts/capture-og.ts"
   },
   "engines": {
     "node": ">=24"
