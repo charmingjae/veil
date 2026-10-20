@@ -17,7 +17,11 @@ import { Veil } from "@-3-/veil";
 </Veil>;
 ```
 
-See the [package README](./packages/veil/README.md) for every prop, texture and effect.
+See the [package README](./packages/veil/README.md) for every prop, texture and effect, or try them all in the [demo](https://charmingjae.github.io/veil/).
+
+## Textures
+
+![The eight textures: plain, noise, mosaic, scratch-card, grain, scanlines, gradient and dither](./docs/images/textures.png)
 
 ## Repository
 
@@ -37,7 +41,10 @@ pnpm install
 pnpm dev     # builds the package, then rebuilds it on change while the playground runs
 pnpm build   # builds the package, then the playground
 pnpm lint    # Biome on everything, Steiger on the playground
+pnpm capture:textures   # rebuilds docs/images/textures.png from the playground
 ```
+
+The first `pnpm capture:textures` on a machine needs `pnpm exec playwright install chromium`.
 
 ## License
 
