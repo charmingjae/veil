@@ -1,0 +1,47 @@
+{
+  "name": "@-3-/veil",
+  "version": "0.1.0",
+  "description": "A React cover that hides its content until the pointer scratches it away.",
+  "keywords": [
+    "react",
+    "scratch",
+    "scratch-card",
+    "reveal",
+    "canvas",
+    "particles"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/charmingjae/veil.git",
+    "directory": "packages/veil"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "prepublishOnly": "pnpm build"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
+    "tsdown": "^0.23.1",
+    "typescript": "^7.0.2"
+  }
+}
