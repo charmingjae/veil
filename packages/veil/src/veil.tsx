@@ -6,24 +6,26 @@ import {
   type PointerEvent,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from "react";
 
-import { getBrushOffsets, getBurnEdgeOffsets, getLinePoints } from "./brush";
+import { scanStroke } from "./brush";
 import { getPixel, setUpCanvas } from "./canvas";
 import {
-  BURN_EDGE_LIFETIME,
-  createBurnEdgeMotion,
-  createMotion,
+  BURN_EDGE_WIDTH,
+  createBurnEdgeParticle,
+  createParticle,
   drawParticles,
+  getPixelColor,
+  hasBurnedOut,
   MAX_PARTICLES,
   type Particle,
+  removeFadedParticles,
 } from "./effects";
 import { CONTENT_STYLE, COVER_STYLE, PARTICLE_LAYER_STYLE, WRAPPER_STYLE } from "./styles";
 import { createShader, MOVING_TEXTURES, NOISE_INTERVAL, shadeCover } from "./textures";
-import type { Point, VeilEffect, VeilHandle, VeilProps } from "./types";
+import type { Point, VeilHandle, VeilProps } from "./types";
 
 // With this set, cleared pixels just fade in place and moving textures hold still.
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -59,8 +61,8 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
   // When each burning-edge pixel (by its index in `pixelsRef`) last started glowing, so the
   // overlapping edges of one stroke light it once.
   const burnedAtRef = useRef(new Map<number, number>());
-  const brushOffsets = useMemo(() => getBrushOffsets(brushSize), [brushSize]);
-  const burnEdgeOffsets = useMemo(() => getBurnEdgeOffsets(brushSize), [brushSize]);
+  // Whether the user prefers reduced motion, looked up once and then kept up to date by the browser.
+  const reducedMotionRef = useRef<MediaQueryList | null>(null);
   // How many cover pixels are cleared, and the percent last passed to `onReveal`.
   const clearedCountRef = useRef(0);
   const reportedPercentRef = useRef(0);
@@ -76,6 +78,11 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
   });
 
   useImperativeHandle(ref, () => ({ reset: () => setUpRef.current?.() }), []);
+
+  const prefersReducedMotion = () => {
+    reducedMotionRef.current ??= window.matchMedia(REDUCED_MOTION_QUERY);
+    return reducedMotionRef.current.matches;
+  };
 
   // Set on the element rather than as a prop, which React 18 does not know.
   useEffect(() => {
@@ -140,7 +147,7 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
       };
       paintCover();
       noiseTimer =
-        MOVING_TEXTURES.includes(texture) && !window.matchMedia(REDUCED_MOTION_QUERY).matches
+        MOVING_TEXTURES.includes(texture) && !prefersReducedMotion()
           ? setInterval(paintCover, NOISE_INTERVAL)
           : undefined;
     };
@@ -167,62 +174,6 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
     return pixels.data[index + 3] > 0 ? index : undefined;
   };
 
-  // Clears the pixel at `offset` from the brush's `center` and sends it off as `motionEffect` says,
-  // unless it is outside or already cleared.
-  const clearPixel = (
-    context: CanvasRenderingContext2D,
-    center: Point,
-    offset: Point,
-    motionEffect: VeilEffect,
-    now: number,
-  ) => {
-    const x = center.x + offset.x;
-    const y = center.y + offset.y;
-    const data = pixelsRef.current?.data;
-    const index = getCoveredIndex(x, y);
-    if (!data || index === undefined) {
-      return;
-    }
-
-    const color = `rgb(${data[index]} ${data[index + 1]} ${data[index + 2]})`;
-    data[index + 3] = 0;
-    clearedCountRef.current += 1;
-    context.clearRect(x, y, 1, 1);
-    if (particlesRef.current.length >= MAX_PARTICLES) {
-      return;
-    }
-    particlesRef.current.push({
-      x,
-      y,
-      color,
-      bornAt: now,
-      ...createMotion(motionEffect, offset, windDirection),
-    });
-  };
-
-  // Lights up the still-covered pixels just past the brush along `centers`, as a burning edge.
-  const burnEdge = (centers: Point[], now: number) => {
-    for (const center of centers) {
-      for (const offset of burnEdgeOffsets) {
-        if (particlesRef.current.length >= MAX_PARTICLES) {
-          return;
-        }
-        const x = center.x + offset.x;
-        const y = center.y + offset.y;
-        const index = getCoveredIndex(x, y);
-        const burnedAt = index === undefined ? undefined : burnedAtRef.current.get(index);
-        if (
-          index === undefined ||
-          (burnedAt !== undefined && now - burnedAt < BURN_EDGE_LIFETIME)
-        ) {
-          continue;
-        }
-        burnedAtRef.current.set(index, now);
-        particlesRef.current.push({ x, y, color: "", bornAt: now, ...createBurnEdgeMotion() });
-      }
-    }
-  };
-
   // Redraws the moving pixels each frame, and stops once they have all faded out.
   const animateParticles = (now: number) => {
     const particleLayer = particleLayerRef.current;
@@ -231,9 +182,7 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
       return;
     }
 
-    particlesRef.current = particlesRef.current.filter(
-      (particle) => now - particle.bornAt < particle.lifetime,
-    );
+    removeFadedParticles(particlesRef.current, now);
 
     context.clearRect(0, 0, particleLayer.offsetWidth, particleLayer.offsetHeight);
     drawParticles(context, particlesRef.current, now);
@@ -242,10 +191,14 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
       particlesRef.current.length > 0 ? requestAnimationFrame(animateParticles) : null;
   };
 
+  // Clears the cover along the pointer's path since the last move, in one pass over the pixels the
+  // stroke touched, and sends each cleared pixel off as `effect` says. With ash, still-covered
+  // pixels just past the stroke light up as its burning edge.
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const cover = coverRef.current;
     const context = cover?.getContext("2d");
-    if (!cover || !context || disabled) {
+    const pixels = pixelsRef.current;
+    if (!cover || !context || !pixels || disabled) {
       // So moving again once enabled does not clear a line from where the pointer stopped.
       lastPointRef.current = null;
       return;
@@ -253,21 +206,54 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
 
     const point = getPixel(cover, event);
     const now = performance.now();
-    const motionEffect = window.matchMedia(REDUCED_MOTION_QUERY).matches ? "dissolve" : effect;
-    const centers = getLinePoints(lastPointRef.current ?? point, point);
-    for (const center of centers) {
-      for (const offset of brushOffsets) {
-        clearPixel(context, center, offset, motionEffect, now);
-      }
-    }
-    // After clearing the whole stroke, so only the edge still left standing glows.
-    if (motionEffect === "ash") {
-      burnEdge(centers, now);
-    }
+    const motionEffect = prefersReducedMotion() ? "dissolve" : effect;
+    const burns = motionEffect === "ash";
+    const radius = brushSize / 2;
+    const radiusSquared = radius * radius;
+    const { data, width } = pixels;
+    const particles = particlesRef.current;
+    const burnedAt = burnedAtRef.current;
+
+    const touched = scanStroke(
+      lastPointRef.current ?? point,
+      point,
+      burns ? radius + BURN_EDGE_WIDTH : radius,
+      pixels.width,
+      pixels.height,
+      (x, y, distanceSquared, offsetX, offsetY) => {
+        const index = (y * width + x) * 4;
+        if (data[index + 3] === 0) {
+          return;
+        }
+        if (distanceSquared <= radiusSquared) {
+          const color = getPixelColor(data, index);
+          data[index + 3] = 0;
+          clearedCountRef.current += 1;
+          if (particles.length < MAX_PARTICLES) {
+            particles.push(
+              createParticle(motionEffect, x, y, color, now, offsetX, offsetY, windDirection),
+            );
+          }
+        } else if (particles.length < MAX_PARTICLES && hasBurnedOut(burnedAt.get(index), now)) {
+          burnedAt.set(index, now);
+          particles.push(createBurnEdgeParticle(x, y, now));
+        }
+      },
+    );
+    // Only the stroke's box changed, so only that goes back onto the cover.
+    context.putImageData(
+      pixels,
+      0,
+      0,
+      touched.left,
+      touched.top,
+      touched.right - touched.left + 1,
+      touched.bottom - touched.top + 1,
+    );
     lastPointRef.current = point;
     reportReveal();
 
-    if (frameRef.current === null && particlesRef.current.length > 0) {
+    if (frameRef.current === null && particles.length > 0) {
       frameRef.current = requestAnimationFrame(animateParticles);
     }
   };

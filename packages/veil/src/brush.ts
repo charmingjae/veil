@@ -1,62 +1,54 @@
-import { BURN_EDGE_WIDTH } from "./effects";
 import type { Point } from "./types";
 
-// Offsets of every pixel in a round brush of the given width, relative to its center.
-export const getBrushOffsets = (brushSize: number) => {
-  const radius = brushSize / 2;
-  const offsets: Point[] = [];
-  for (let y = -Math.floor(radius); y <= radius; y += 1) {
-    for (let x = -Math.floor(radius); x <= radius; x += 1) {
-      if (x * x + y * y <= radius * radius) {
-        offsets.push({ x, y });
+// The area a stroke touched, inclusive, in whole pixels.
+export interface Bounds {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+// Visits, once each and row by row, every whole pixel inside a `width` × `height` area that lies
+// within `reach` of the stroke from `from` to `to`: a capsule, so the trail stays unbroken however
+// fast the pointer moves, without stamping the brush at every pixel along the way. `visit` gets the
+// pixel, its squared distance from the stroke, and its offset from the stroke's nearest point.
+// Returns the box scanned, clipped to the area.
+export const scanStroke = (
+  from: Point,
+  to: Point,
+  reach: number,
+  width: number,
+  height: number,
+  visit: (x: number, y: number, distanceSquared: number, offsetX: number, offsetY: number) => void,
+): Bounds => {
+  const deltaX = to.x - from.x;
+  const deltaY = to.y - from.y;
+  const lengthSquared = deltaX * deltaX + deltaY * deltaY;
+  const reachSquared = reach * reach;
+  const bounds = {
+    left: Math.max(0, Math.floor(Math.min(from.x, to.x) - reach)),
+    top: Math.max(0, Math.floor(Math.min(from.y, to.y) - reach)),
+    right: Math.min(width - 1, Math.ceil(Math.max(from.x, to.x) + reach)),
+    bottom: Math.min(height - 1, Math.ceil(Math.max(from.y, to.y) + reach)),
+  };
+
+  for (let y = bounds.top; y <= bounds.bottom; y += 1) {
+    for (let x = bounds.left; x <= bounds.right; x += 1) {
+      // How far along the stroke its nearest point is: 0 at `from`, 1 at `to`.
+      const along =
+        lengthSquared === 0
+          ? 0
+          : Math.min(
+              1,
+              Math.max(0, ((x - from.x) * deltaX + (y - from.y) * deltaY) / lengthSquared),
+            );
+      const offsetX = x - (from.x + along * deltaX);
+      const offsetY = y - (from.y + along * deltaY);
+      const distanceSquared = offsetX * offsetX + offsetY * offsetY;
+      if (distanceSquared <= reachSquared) {
+        visit(x, y, distanceSquared, offsetX, offsetY);
       }
     }
   }
-  return offsets;
-};
-
-// Offsets of the pixels in a ring `BURN_EDGE_WIDTH` wide just outside a round brush of the given
-// width, relative to its center.
-export const getBurnEdgeOffsets = (brushSize: number) => {
-  const inner = brushSize / 2;
-  const outer = inner + BURN_EDGE_WIDTH;
-  const offsets: Point[] = [];
-  for (let y = -Math.floor(outer); y <= outer; y += 1) {
-    for (let x = -Math.floor(outer); x <= outer; x += 1) {
-      const distance = x * x + y * y;
-      if (distance > inner * inner && distance <= outer * outer) {
-        offsets.push({ x, y });
-      }
-    }
-  }
-  return offsets;
-};
-
-// Every whole pixel on the straight line from `from` to `to` (Bresenham's line), so the trail
-// stays unbroken however fast the pointer moves.
-export const getLinePoints = (from: Point, to: Point) => {
-  const points: Point[] = [];
-  const deltaX = Math.abs(to.x - from.x);
-  const deltaY = -Math.abs(to.y - from.y);
-  const stepX = from.x < to.x ? 1 : -1;
-  const stepY = from.y < to.y ? 1 : -1;
-  let error = deltaX + deltaY;
-  let { x, y } = from;
-
-  while (true) {
-    points.push({ x, y });
-    if (x === to.x && y === to.y) {
-      return points;
-    }
-
-    const doubledError = 2 * error;
-    if (doubledError >= deltaY) {
-      error += deltaY;
-      x += stepX;
-    }
-    if (doubledError <= deltaX) {
-      error += deltaX;
-      y += stepY;
-    }
-  }
+  return bounds;
 };
