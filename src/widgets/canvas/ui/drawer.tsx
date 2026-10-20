@@ -9,14 +9,25 @@ import {
   useRef,
 } from "react";
 
-// How long a cleared pixel flies before it fades out, in milliseconds.
-const PARTICLE_LIFETIME = 700;
-// Upward speed range, in pixels per millisecond. The fastest flies 56px (0.08 × 700), which fits
-// the particle layer's `-top-14` (56px) room above the cover.
-const PARTICLE_MIN_SPEED = 0.03;
-const PARTICLE_MAX_SPEED = 0.08;
-// Sideways drift, in pixels per millisecond, either way.
-const PARTICLE_MAX_DRIFT = 0.015;
+// How fast drifting pixels sway side to side, and twinkling ones flicker, in radians per
+// millisecond.
+const SWAY_SPEED = 0.008;
+const TWINKLE_SPEED = 0.04;
+// Ash: the share of cleared pixels that fly off as embers; the rest crumble into ash of this color.
+const ASH_EMBER_SHARE = 0.1;
+const ASH_COLOR = "rgb(70 70 70)";
+// How an ember's color changes as it burns out: `[progress, [red, green, blue]]` stops, from
+// yellow through orange and red to ash gray.
+const EMBER_COLOR_STOPS: [number, [number, number, number]][] = [
+  [0, [255, 230, 140]],
+  [0.25, [255, 150, 40]],
+  [0.6, [200, 50, 20]],
+  [1, [60, 60, 60]],
+];
+// With ash, the cover just past the cleared trail glows like a burning edge: this many pixels
+// wide, for this many milliseconds.
+const BURN_EDGE_WIDTH = 2;
+const BURN_EDGE_LIFETIME = 600;
 // Range of the cover's random gray shades (0 black, 255 white).
 const NOISE_MIN_SHADE = 110;
 const NOISE_MAX_SHADE = 200;
@@ -63,19 +74,189 @@ export type DrawerTexture =
 // Textures that keep changing every `NOISE_INTERVAL`; the rest are painted once.
 const MOVING_TEXTURES: DrawerTexture[] = ["noise", "mosaic", "grain", "scanlines"];
 
+// How cleared pixels leave the cover: `float` up, `sand` falling, `scatter` outward from the
+// brush, `dissolve` fading in place, `wind` blown sideways, `snow` drifting down, `sparkle`
+// flickering as they rise a little, `ash` burning, with embers rising off a glowing edge.
+export type DrawerEffect =
+  | "float"
+  | "sand"
+  | "scatter"
+  | "dissolve"
+  | "wind"
+  | "snow"
+  | "sparkle"
+  | "ash";
+
+// Which way the `wind` effect blows, on a 3×3 grid; `any` blows each pixel its own way.
+export type DrawerWindDirection =
+  | "up-left"
+  | "up"
+  | "up-right"
+  | "left"
+  | "any"
+  | "right"
+  | "down-left"
+  | "down"
+  | "down-right";
+
+// Each wind direction as a step on the grid, y growing downward; null for `any`.
+const WIND_STEPS: Record<DrawerWindDirection, Point | null> = {
+  "up-left": { x: -1, y: -1 },
+  up: { x: 0, y: -1 },
+  "up-right": { x: 1, y: -1 },
+  left: { x: -1, y: 0 },
+  any: null,
+  right: { x: 1, y: 0 },
+  "down-left": { x: -1, y: 1 },
+  down: { x: 0, y: 1 },
+  "down-right": { x: 1, y: 1 },
+};
+
 interface Point {
   x: number;
   y: number;
 }
 
-interface Particle extends Point {
-  color: string;
-  bornAt: number;
+// How a cleared pixel moves once it leaves the cover. Distances are in pixels and times in
+// milliseconds, with y growing downward.
+interface Motion {
+  lifetime: number;
   velocityX: number;
   velocityY: number;
+  /** Downward acceleration, in pixels per millisecond squared. */
+  gravity: number;
+  /** How far it sways side to side; 0 for none. */
+  sway: number;
+  /** Where in its sway and flicker it starts, in radians. */
+  phase: number;
+  /** Whether it flickers as it fades. */
+  twinkles: boolean;
+  /** Whether it burns through the ember colors instead of keeping one color. */
+  glows: boolean;
+  /** Its color, when not the cleared pixel's own. */
+  color?: string;
+}
+
+interface Particle extends Point, Motion {
+  color: string;
+  bornAt: number;
 }
 
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min);
+
+// An ember's color, `progress` (0 to 1) of the way through its life.
+const getEmberColor = (progress: number) => {
+  const next = EMBER_COLOR_STOPS.findIndex(([stop]) => stop >= progress);
+  if (next <= 0) {
+    return `rgb(${EMBER_COLOR_STOPS[0][1].join(" ")})`;
+  }
+  const [fromStop, from] = EMBER_COLOR_STOPS[next - 1];
+  const [toStop, to] = EMBER_COLOR_STOPS[next];
+  const mix = (progress - fromStop) / (toStop - fromStop);
+  return `rgb(${from.map((channel, index) => channel + (to[index] - channel) * mix).join(" ")})`;
+};
+
+// How a pixel cleared at `offset` from the brush's center moves for `effect`. Every effect keeps
+// its pixels within the particle layer's room around the cover, 56px (`--spacing(14)`) each way
+// but 112px (`--spacing(28)`) above, where embers rise; the numbers after each one show its
+// furthest reach.
+const createMotion = (
+  effect: DrawerEffect,
+  offset: Point,
+  windDirection: DrawerWindDirection,
+): Motion => {
+  const still = {
+    lifetime: 700,
+    velocityX: 0,
+    velocityY: 0,
+    gravity: 0,
+    sway: 0,
+    phase: randomBetween(0, 2 * Math.PI),
+    twinkles: false,
+    glows: false,
+  };
+  switch (effect) {
+    case "float":
+      // Up 0.08 × 700 = 56.
+      return {
+        ...still,
+        velocityX: randomBetween(-0.015, 0.015),
+        velocityY: -randomBetween(0.03, 0.08),
+      };
+    case "sand":
+      // Down 0.02 × 700 + ½ × 0.00017 × 700² ≈ 56.
+      return {
+        ...still,
+        velocityX: randomBetween(-0.01, 0.01),
+        velocityY: randomBetween(0, 0.02),
+        gravity: 0.00017,
+      };
+    case "scatter": {
+      // Out 0.08 × 700 = 56, away from the brush's center (any way from the center itself).
+      const angle =
+        offset.x === 0 && offset.y === 0
+          ? randomBetween(0, 2 * Math.PI)
+          : Math.atan2(offset.y, offset.x);
+      const speed = randomBetween(0.02, 0.08);
+      return { ...still, velocityX: Math.cos(angle) * speed, velocityY: Math.sin(angle) * speed };
+    }
+    case "dissolve":
+      return { ...still, lifetime: 500 };
+    case "wind": {
+      // Along the wind 0.075 × 700 + 3 ≈ 56, with a little drift across it.
+      const step = WIND_STEPS[windDirection];
+      const angle = step ? Math.atan2(step.y, step.x) : randomBetween(0, 2 * Math.PI);
+      const speed = randomBetween(0.04, 0.075);
+      const drift = randomBetween(-0.005, 0.005);
+      return {
+        ...still,
+        velocityX: Math.cos(angle) * speed - Math.sin(angle) * drift,
+        velocityY: Math.sin(angle) * speed + Math.cos(angle) * drift,
+        sway: 3,
+      };
+    }
+    case "snow":
+      // Down 0.035 × 1400 = 49.
+      return {
+        ...still,
+        lifetime: 1400,
+        velocityY: randomBetween(0.01, 0.035),
+        sway: randomBetween(2, 5),
+      };
+    case "sparkle":
+      // Up 0.02 × 900 = 18.
+      return { ...still, lifetime: 900, velocityY: -randomBetween(0, 0.02), twinkles: true };
+    case "ash":
+      // Embers rise faster and faster, as if on hot air: up 0.02 × 1000 + ½ × 0.00018 × 1000² =
+      // 110. Sideways 0.01 × 1000 + 6 = 16.
+      if (Math.random() < ASH_EMBER_SHARE) {
+        return {
+          ...still,
+          lifetime: 1000,
+          velocityX: randomBetween(-0.01, 0.01),
+          velocityY: -randomBetween(0.005, 0.02),
+          gravity: -0.00018,
+          sway: randomBetween(2, 6),
+          twinkles: true,
+          glows: true,
+        };
+      }
+      // The rest crumble into ash where they were and settle a little: down 0.01 × 600 = 6.
+      return { ...still, lifetime: 600, velocityY: randomBetween(0, 0.01), color: ASH_COLOR };
+  }
+};
+
+// The burning edge's glow on a still-covered pixel: an ember that stays put.
+const createBurnEdgeMotion = (): Motion => ({
+  lifetime: BURN_EDGE_LIFETIME,
+  velocityX: 0,
+  velocityY: 0,
+  gravity: 0,
+  sway: 0,
+  phase: randomBetween(0, 2 * Math.PI),
+  twinkles: true,
+  glows: true,
+});
 
 // Offsets of every pixel in a round brush of the given width, relative to its center.
 const getBrushOffsets = (brushSize: number) => {
@@ -84,6 +265,23 @@ const getBrushOffsets = (brushSize: number) => {
   for (let y = -Math.floor(radius); y <= radius; y += 1) {
     for (let x = -Math.floor(radius); x <= radius; x += 1) {
       if (x * x + y * y <= radius * radius) {
+        offsets.push({ x, y });
+      }
+    }
+  }
+  return offsets;
+};
+
+// Offsets of the pixels in a ring `BURN_EDGE_WIDTH` wide just outside a round brush of the given
+// width, relative to its center.
+const getBurnEdgeOffsets = (brushSize: number) => {
+  const inner = brushSize / 2;
+  const outer = inner + BURN_EDGE_WIDTH;
+  const offsets: Point[] = [];
+  for (let y = -Math.floor(outer); y <= outer; y += 1) {
+    for (let x = -Math.floor(outer); x <= outer; x += 1) {
+      const distance = x * x + y * y;
+      if (distance > inner * inner && distance <= outer * outer) {
         offsets.push({ x, y });
       }
     }
@@ -195,14 +393,25 @@ const shadeCover = ({ data, width }: ImageData, getShade: (x: number, y: number)
 
 interface DrawerProps {
   texture: DrawerTexture;
+  /** How cleared pixels leave the cover. Changing it starts the drawer over. */
+  effect: DrawerEffect;
+  /** Which way `wind` blows; ignored by the other effects. Changing it starts the drawer over. */
+  windDirection?: DrawerWindDirection;
   /** Width of the cleared trail, in pixels. Changing it keeps what is already cleared. */
   brushSize: number;
   children: ReactNode;
 }
 
 // Covers `children` with gray, in the given `texture`. Moving the pointer over it clears the pixels underneath, which
-// fly up and fade out. Only clicks on cleared pixels reach `children`. The drawer takes the size of `children`.
-export const Drawer = ({ texture, brushSize, children }: DrawerProps) => {
+// move off as `effect` says and fade out. Only clicks on cleared pixels reach `children`. The drawer takes the size of
+// `children`.
+export const Drawer = ({
+  texture,
+  effect,
+  windDirection = "right",
+  brushSize,
+  children,
+}: DrawerProps) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const coverRef = useRef<HTMLCanvasElement>(null);
   // Flying pixels get their own canvas, so drawing them never touches the cover.
@@ -212,8 +421,13 @@ export const Drawer = ({ texture, brushSize, children }: DrawerProps) => {
   const particlesRef = useRef<Particle[]>([]);
   const lastPointRef = useRef<Point | null>(null);
   const frameRef = useRef<number | null>(null);
+  // When each burning-edge pixel (by its index in `pixelsRef`) last started glowing, so the
+  // overlapping edges of one stroke light it once.
+  const burnedAtRef = useRef(new Map<number, number>());
   const brushOffsets = useMemo(() => getBrushOffsets(brushSize), [brushSize]);
+  const burnEdgeOffsets = useMemo(() => getBurnEdgeOffsets(brushSize), [brushSize]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `effect` and `windDirection` only shape new particles, but changing them should start the drawer over too
   useEffect(() => {
     const wrapper = wrapperRef.current;
     const cover = coverRef.current;
@@ -236,6 +450,7 @@ export const Drawer = ({ texture, brushSize, children }: DrawerProps) => {
       stop();
       setUpCanvas(particleLayer);
       particlesRef.current = [];
+      burnedAtRef.current.clear();
 
       // The cover keeps one canvas pixel per CSS pixel (stretched without smoothing on high-density
       // screens), so the noise can be written straight in with `putImageData`.
@@ -265,7 +480,7 @@ export const Drawer = ({ texture, brushSize, children }: DrawerProps) => {
       resizeObserver.disconnect();
       stop();
     };
-  }, [texture]);
+  }, [texture, effect, windDirection]);
 
   // Where a pixel's RGBA starts in `pixelsRef`, or undefined while it is not still covered.
   const getCoveredIndex = (x: number, y: number) => {
@@ -277,8 +492,16 @@ export const Drawer = ({ texture, brushSize, children }: DrawerProps) => {
     return pixels.data[index + 3] > 0 ? index : undefined;
   };
 
-  // Clears one pixel from the cover and sends it flying, unless it is outside or already cleared.
-  const clearPixel = (context: CanvasRenderingContext2D, x: number, y: number, now: number) => {
+  // Clears the pixel at `offset` from the brush's `center` and sends it off, unless it is outside
+  // or already cleared.
+  const clearPixel = (
+    context: CanvasRenderingContext2D,
+    center: Point,
+    offset: Point,
+    now: number,
+  ) => {
+    const x = center.x + offset.x;
+    const y = center.y + offset.y;
     const data = pixelsRef.current?.data;
     const index = getCoveredIndex(x, y);
     if (!data || index === undefined) {
@@ -293,12 +516,31 @@ export const Drawer = ({ texture, brushSize, children }: DrawerProps) => {
       y,
       color,
       bornAt: now,
-      velocityX: randomBetween(-PARTICLE_MAX_DRIFT, PARTICLE_MAX_DRIFT),
-      velocityY: randomBetween(PARTICLE_MIN_SPEED, PARTICLE_MAX_SPEED),
+      ...createMotion(effect, offset, windDirection),
     });
   };
 
-  // Redraws the flying pixels each frame, and stops once they have all faded out.
+  // Lights up the still-covered pixels just past the brush along `centers`, as a burning edge.
+  const burnEdge = (centers: Point[], now: number) => {
+    for (const center of centers) {
+      for (const offset of burnEdgeOffsets) {
+        const x = center.x + offset.x;
+        const y = center.y + offset.y;
+        const index = getCoveredIndex(x, y);
+        const burnedAt = index === undefined ? undefined : burnedAtRef.current.get(index);
+        if (
+          index === undefined ||
+          (burnedAt !== undefined && now - burnedAt < BURN_EDGE_LIFETIME)
+        ) {
+          continue;
+        }
+        burnedAtRef.current.set(index, now);
+        particlesRef.current.push({ x, y, color: "", bornAt: now, ...createBurnEdgeMotion() });
+      }
+    }
+  };
+
+  // Redraws the moving pixels each frame, and stops once they have all faded out.
   const animateParticles = (now: number) => {
     const particleLayer = particleLayerRef.current;
     const context = particleLayer?.getContext("2d");
@@ -306,18 +548,28 @@ export const Drawer = ({ texture, brushSize, children }: DrawerProps) => {
       return;
     }
 
-    // How far the layer reaches above the cover, read from its `-top-*` class.
-    const headroom = -particleLayer.offsetTop;
+    // How far the layer reaches past the cover on each side, read from its `-top-*`/`-left-*` classes.
+    const roomX = -particleLayer.offsetLeft;
+    const roomY = -particleLayer.offsetTop;
     particlesRef.current = particlesRef.current.filter(
-      (particle) => now - particle.bornAt < PARTICLE_LIFETIME,
+      (particle) => now - particle.bornAt < particle.lifetime,
     );
 
     context.clearRect(0, 0, particleLayer.offsetWidth, particleLayer.offsetHeight);
-    for (const { x, y, color, bornAt, velocityX, velocityY } of particlesRef.current) {
+    for (const particle of particlesRef.current) {
+      const { x, y, color, bornAt, lifetime, velocityX, velocityY, gravity, sway, phase } =
+        particle;
       const age = now - bornAt;
-      context.globalAlpha = 1 - age / PARTICLE_LIFETIME;
-      context.fillStyle = color;
-      context.fillRect(x + velocityX * age, y + headroom - velocityY * age, 1, 1);
+      const progress = age / lifetime;
+      const flicker = particle.twinkles ? 0.5 + 0.5 * Math.sin(age * TWINKLE_SPEED + phase) : 1;
+      context.globalAlpha = (1 - progress) * flicker;
+      context.fillStyle = particle.glows ? getEmberColor(progress) : color;
+      context.fillRect(
+        x + roomX + velocityX * age + sway * Math.sin(age * SWAY_SPEED + phase),
+        y + roomY + velocityY * age + 0.5 * gravity * age * age,
+        1,
+        1,
+      );
     }
     context.globalAlpha = 1;
 
@@ -334,10 +586,15 @@ export const Drawer = ({ texture, brushSize, children }: DrawerProps) => {
 
     const point = getPixel(cover, event);
     const now = performance.now();
-    for (const center of getLinePoints(lastPointRef.current ?? point, point)) {
+    const centers = getLinePoints(lastPointRef.current ?? point, point);
+    for (const center of centers) {
       for (const offset of brushOffsets) {
-        clearPixel(context, center.x + offset.x, center.y + offset.y, now);
+        clearPixel(context, center, offset, now);
       }
+    }
+    // After clearing the whole stroke, so only the edge still left standing glows.
+    if (effect === "ash") {
+      burnEdge(centers, now);
     }
     lastPointRef.current = point;
 
@@ -379,9 +636,10 @@ export const Drawer = ({ texture, brushSize, children }: DrawerProps) => {
         ref={coverRef}
         className="pointer-events-none absolute inset-0 size-full [image-rendering:pixelated]"
       />
+      {/* Sized explicitly: a canvas keeps its default 300×150 size under `inset` alone. */}
       <canvas
         ref={particleLayerRef}
-        className="pointer-events-none absolute -top-14 left-0 h-[calc(100%+--spacing(14))] w-full"
+        className="pointer-events-none absolute -top-28 -left-14 h-[calc(100%+--spacing(42))] w-[calc(100%+--spacing(28))]"
       />
     </div>
   );

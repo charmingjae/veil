@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { CodeBlockCopyButton } from "@/shared/ui/code-block";
 import { useSidebar } from "@/shared/ui/sidebar";
 
-import type { DrawerTexture } from "./drawer";
+import type { DrawerEffect, DrawerTexture, DrawerWindDirection } from "./drawer";
 
 // How long each character takes to appear while the code types itself out, in milliseconds.
 const TYPING_INTERVAL = 15;
@@ -38,6 +38,8 @@ const getChangedRange = (before: string, after: string): Typing | null => {
 
 interface DrawerCodeProps {
   texture: DrawerTexture;
+  effect: DrawerEffect;
+  windDirection: DrawerWindDirection;
   brushSize: number;
   /** The content's size, in pixels; `null` leaves it to the content. */
   width: number | null;
@@ -47,7 +49,14 @@ interface DrawerCodeProps {
 // Shows the JSX that renders `Drawer` with the current settings, while the settings sidebar is open.
 // Each time it opens, the code types itself out one character at a time; after that, a setting
 // change types out just the part of the code it changed.
-export const DrawerCode = ({ texture, brushSize, width, height }: DrawerCodeProps) => {
+export const DrawerCode = ({
+  texture,
+  effect,
+  windDirection,
+  brushSize,
+  width,
+  height,
+}: DrawerCodeProps) => {
   const { isMobile, open, openMobile } = useSidebar();
   const isShown = isMobile ? openMobile : open;
 
@@ -56,7 +65,8 @@ export const DrawerCode = ({ texture, brushSize, width, height }: DrawerCodeProp
     .join(", ");
   const content = contentStyle ? `<div style={{ ${contentStyle} }}>{children}</div>` : "{children}";
   const lines = [
-    `<Drawer texture="${texture}" brushSize={${brushSize}}>`,
+    // `windDirection` only matters to the wind effect, so it shows only then.
+    `<Drawer texture="${texture}" effect="${effect}"${effect === "wind" ? ` windDirection="${windDirection}"` : ""} brushSize={${brushSize}}>`,
     `  ${content}`,
     "</Drawer>",
   ];

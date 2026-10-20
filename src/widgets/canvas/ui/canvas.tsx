@@ -5,23 +5,32 @@ import { useState } from "react";
 import { Sidebar, SidebarContent, SidebarProvider, SidebarTrigger } from "@/shared/ui/sidebar";
 
 import { BrushControls } from "./brush-controls";
-import { Drawer, type DrawerTexture } from "./drawer";
+import { Drawer, type DrawerEffect, type DrawerTexture, type DrawerWindDirection } from "./drawer";
 import { DrawerCode } from "./drawer-code";
 import { DrawerControls } from "./drawer-controls";
+import { EffectControls } from "./effect-controls";
 import { SizeControls } from "./size-controls";
 
 export const Canvas = () => {
   const [texture, setTexture] = useState<DrawerTexture>("noise");
+  const [effect, setEffect] = useState<DrawerEffect>("float");
+  const [windDirection, setWindDirection] = useState<DrawerWindDirection>("right");
   const [brushSize, setBrushSize] = useState(50);
   const [width, setWidth] = useState<number | null>(null);
   const [height, setHeight] = useState<number | null>(null);
 
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center p-6">
+      {/* `overflow-hidden` clips pixels flying off past the edges, so they never add a scrollbar. */}
+      <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden p-6">
         {/* Flipped so the panel icon points at the right-hand sidebar. */}
         <SidebarTrigger className="absolute top-2 right-2 [&>svg]:rotate-180" />
-        <Drawer texture={texture} brushSize={brushSize}>
+        <Drawer
+          texture={texture}
+          effect={effect}
+          windDirection={windDirection}
+          brushSize={brushSize}
+        >
           <div
             className="flex max-w-full flex-col items-center justify-center"
             style={{ width: width ?? undefined, height: height ?? undefined }}
@@ -30,11 +39,24 @@ export const Canvas = () => {
             <p className="font-extralight text-muted-foreground">Every surface hides a story</p>
           </div>
         </Drawer>
-        <DrawerCode texture={texture} brushSize={brushSize} width={width} height={height} />
+        <DrawerCode
+          texture={texture}
+          effect={effect}
+          windDirection={windDirection}
+          brushSize={brushSize}
+          width={width}
+          height={height}
+        />
       </div>
       <Sidebar side="right" variant="floating">
         <SidebarContent>
           <DrawerControls texture={texture} onTextureChange={setTexture} />
+          <EffectControls
+            effect={effect}
+            windDirection={windDirection}
+            onEffectChange={setEffect}
+            onWindDirectionChange={setWindDirection}
+          />
           <BrushControls brushSize={brushSize} onBrushSizeChange={setBrushSize} />
           <SizeControls
             width={width}
