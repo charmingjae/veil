@@ -169,9 +169,15 @@ importers:
       '@biomejs/biome':
         specifier: ^2.5.15
         version: 2.5.15
+      gifenc:
+        specifier: ^1.0.3
+        version: 1.0.3
       playwright:
         specifier: ^1.64.1
         version: 1.64.1
+      pngjs:
+        specifier: ^7.0.0
+        version: 7.0.0
 
   apps/playground:
     dependencies:
@@ -1760,6 +1766,9 @@ packages:
     resolution: {integrity: sha512-X6fBC0pmImC70gvX2zm56go9hx0MyoGVdG0tUCkg/D+Xnh5TJsOZ7iDbOdI3PvmtrDxnu1YdDufpK2QJX1Meqw==}
     engines: {node: '>=20.20.0'}
 
+  gifenc@1.0.3:
+    resolution: {integrity: sha512-xdr6AdrfGBcfzncONUOlXMBuc5wJDtOueE3c5rdG0oNgtINLD+f2iFZltrBRZYzACRbKr+mSVU/x98zv2u3jmw==}
+
   glob-parent@5.1.2:
     resolution: {integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==}
     engines: {node: '>= 6'}
@@ -2282,6 +2291,10 @@ packages:
   pluralize@8.0.0:
     resolution: {integrity: sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA==}
     engines: {node: '>=4'}
+
+  pngjs@7.0.0:
+    resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
+    engines: {node: '>=14.19.0'}
 
   postcss-selector-parser@7.1.6:
     resolution: {integrity: sha512-7qASPzhKF2l2KLboRZux8CCTRMdGiV08vWmyKzPz22qZ7ZjQBOeY7rNzNoCLSUiftJ7HUq0GERHmxw/t0dCdMw==}
@@ -4092,6 +4105,8 @@ snapshots:
     dependencies:
       resolve-pkg-maps: 1.0.0
 
+  gifenc@1.0.3: {}
+
   glob-parent@5.1.2:
     dependencies:
       is-glob: 4.0.3
@@ -4484,6 +4499,8 @@ snapshots:
       playwright-core: 1.64.1
 
   pluralize@8.0.0: {}
+
+  pngjs@7.0.0: {}
 
   postcss-selector-parser@7.1.6:
     dependencies:

@@ -23,6 +23,14 @@ See the [package README](./packages/veil/README.md) for every prop, texture and 
 
 ![The eight textures: plain, noise, mosaic, scratch-card, grain, scanlines, gradient and dither](./docs/images/textures.png)
 
+## Effects
+
+| `float` | `sand` | `scatter` | `dissolve` |
+| :-: | :-: | :-: | :-: |
+| ![Pixels drifting up](./docs/images/effects/float.gif) | ![Pixels falling](./docs/images/effects/sand.gif) | ![Pixels bursting outward](./docs/images/effects/scatter.gif) | ![Pixels fading in place](./docs/images/effects/dissolve.gif) |
+| **`wind`** | **`snow`** | **`sparkle`** | **`ash`** |
+| ![Pixels blown to the right](./docs/images/effects/wind.gif) | ![Pixels drifting down](./docs/images/effects/snow.gif) | ![Pixels flickering as they rise](./docs/images/effects/sparkle.gif) | ![Embers rising off a burning edge](./docs/images/effects/ash.gif) |
+
 ## Repository
 
 | Path | What it is |
@@ -42,9 +50,10 @@ pnpm dev     # builds the package, then rebuilds it on change while the playgrou
 pnpm build   # builds the package, then the playground
 pnpm lint    # Biome on everything, Steiger on the playground
 pnpm capture:textures   # rebuilds docs/images/textures.png from the playground
+pnpm capture:effects    # rebuilds docs/images/effects/*.gif from the playground
 ```
 
-The first `pnpm capture:textures` on a machine needs `pnpm exec playwright install chromium`.
+The first capture on a machine needs `pnpm exec playwright install chromium`.
 
 ## License
 

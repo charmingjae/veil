@@ -8,7 +8,8 @@
     "build": "pnpm --recursive build",
     "lint": "biome check && pnpm --recursive --if-present lint",
     "lint:fix": "biome check --write",
-    "capture:textures": "pnpm build && node scripts/capture-textures.ts"
+    "capture:textures": "pnpm build && node scripts/capture-textures.ts",
+    "capture:effects": "pnpm build && node scripts/capture-effects.ts"
   },
   "engines": {
     "node": ">=24"
@@ -23,6 +24,8 @@
   "packageManager": "pnpm@12.11.2",
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
-    "playwright": "^1.64.1"
+    "gifenc": "^1.0.3",
+    "playwright": "^1.64.1",
+    "pngjs": "^7.0.0"
   }
 }
