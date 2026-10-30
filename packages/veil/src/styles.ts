@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
-// How far the particle layer reaches past the cover, in pixels: this much each way, and more
-// above, where embers rise.
+// How far the particle layer reaches past the cover at most, in pixels: this much each way, and
+// more above, where embers rise.
 export const PARTICLE_ROOM = 56;
 export const PARTICLE_ROOM_ABOVE = 112;
 
@@ -22,13 +22,15 @@ export const COVER_STYLE: CSSProperties = {
   pointerEvents: "none",
   imageRendering: "pixelated",
 };
-// Sized explicitly: a canvas keeps its default 300×150 size under `inset` alone.
+// Sized explicitly: a canvas keeps its default 300×150 size under `inset` alone. It starts with no
+// room past the cover, so it never overflows before `fitParticleLayer` measures the page; that then
+// sets these four on the element, and React leaves them alone since this object never changes.
 export const PARTICLE_LAYER_STYLE: CSSProperties = {
   position: "absolute",
-  top: -PARTICLE_ROOM_ABOVE,
-  left: -PARTICLE_ROOM,
-  width: `calc(100% + ${2 * PARTICLE_ROOM}px)`,
-  height: `calc(100% + ${PARTICLE_ROOM_ABOVE + PARTICLE_ROOM}px)`,
+  top: 0,
+  left: 0,
+  width: "100%",
+  height: "100%",
   pointerEvents: "none",
 };
 export const CONTENT_STYLE: CSSProperties = { display: "contents" };

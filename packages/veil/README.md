@@ -97,7 +97,7 @@ export const Card = () => {
 - **Reduced motion.** When the user prefers reduced motion, cleared pixels just fade in place and moving textures hold still.
 - **Touch.** Dragging a finger over the veil scratches it instead of scrolling the page.
 - **Resizing.** When the content or the window changes the veil's size, it is covered again from scratch.
-- **Particles.** Pixels fly up to 56px past the cover (112px above it), drawn on a layer that overflows the veil. At most 20,000 move at once; past that, cleared pixels just vanish.
+- **Particles.** Pixels fly up to 56px past the cover (112px above it), drawn on a layer that overflows the veil, but only as far as the visible part of the page or its scrolling container reaches, so it never adds a scrollbar. At most 20,000 move at once; past that, cleared pixels just vanish.
 - **Server rendering.** The component is marked `"use client"` and touches browser APIs only after mounting, so it works in Next.js (App and Pages Router) and other server-rendered React apps.
 
 ## Requirements

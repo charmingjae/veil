@@ -1,5 +1,4 @@
 import { randomBetween } from "./random";
-import { PARTICLE_ROOM, PARTICLE_ROOM_ABOVE } from "./styles";
 import type { Point, VeilEffect, VeilWindDirection } from "./types";
 
 // At most this many pixels move at once. Past it, cleared pixels just vanish, so a big brush on a
@@ -123,8 +122,8 @@ const getEmberColor = (progress: number) =>
 
 // The particle a pixel at (x, y) of `color` becomes when cleared at `bornAt`, `offset` from the
 // stroke's nearest point, for `effect`. Every effect keeps its pixels within the particle layer's
-// room around the cover, `PARTICLE_ROOM` (56px) each way but `PARTICLE_ROOM_ABOVE` (112px) above;
-// the numbers after each one show its furthest reach.
+// most room around the cover, `PARTICLE_ROOM` (56px) each way but `PARTICLE_ROOM_ABOVE` (112px)
+// above; the numbers after each one show its furthest reach.
 export const createParticle = (
   effect: VeilEffect,
   x: number,
@@ -282,11 +281,13 @@ export const removeFadedParticles = (particles: Particle[], now: number) => {
   particles.length = kept;
 };
 
-// Draws each particle where it has moved to `now`, fading over its life, onto the particle layer.
+// Draws each particle where it has moved to `now`, fading over its life, onto the particle layer,
+// whose `origin` is where the cover's top-left corner lands on it.
 export const drawParticles = (
   context: CanvasRenderingContext2D,
   particles: Particle[],
   now: number,
+  origin: Point,
 ) => {
   for (const particle of particles) {
     const { x, y, color, bornAt, lifetime, velocityX, velocityY, gravity, sway, phase } = particle;
@@ -296,8 +297,8 @@ export const drawParticles = (
     context.globalAlpha = (1 - progress) * flicker;
     context.fillStyle = particle.glows ? getEmberColor(progress) : color;
     context.fillRect(
-      x + PARTICLE_ROOM + velocityX * age + sway * Math.sin(age * SWAY_SPEED + phase),
-      y + PARTICLE_ROOM_ABOVE + velocityY * age + 0.5 * gravity * age * age,
+      x + origin.x + velocityX * age + sway * Math.sin(age * SWAY_SPEED + phase),
+      y + origin.y + velocityY * age + 0.5 * gravity * age * age,
       1,
       1,
     );

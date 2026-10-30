@@ -11,7 +11,7 @@ import {
 } from "react";
 
 import { scanStroke } from "./brush";
-import { getPixel, setUpCanvas } from "./canvas";
+import { fitParticleLayer, getPixel } from "./canvas";
 import {
   BURN_EDGE_WIDTH,
   createBurnEdgeParticle,
@@ -56,6 +56,8 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
   // The cover's current noise as RGBA, one canvas pixel per CSS pixel; alpha 0 once cleared.
   const pixelsRef = useRef<ImageData | null>(null);
   const particlesRef = useRef<Particle[]>([]);
+  // Where the cover's top-left corner lands on the particle layer, which reaches past it.
+  const particleOriginRef = useRef<Point>({ x: 0, y: 0 });
   const lastPointRef = useRef<Point | null>(null);
   const frameRef = useRef<number | null>(null);
   // When each burning-edge pixel (by its index in `pixelsRef`) last started glowing, so the
@@ -125,7 +127,7 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
     // Sets up the cover from scratch, so changing any option or the veil's size starts it over.
     const setUp = () => {
       stop();
-      setUpCanvas(particleLayer);
+      particleOriginRef.current = fitParticleLayer(particleLayer, cover);
       particlesRef.current = [];
       burnedAtRef.current.clear();
 
@@ -156,9 +158,12 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
     // Calls `setUp` once right away, then whenever `children` or the window resizes the veil.
     const resizeObserver = new ResizeObserver(setUp);
     resizeObserver.observe(wrapper);
+    // A window resize can move the veil without resizing it, say when it is centered.
+    window.addEventListener("resize", refitParticleLayer);
 
     return () => {
       resizeObserver.disconnect();
+      window.removeEventListener("resize", refitParticleLayer);
       stop();
       setUpRef.current = null;
     };
@@ -185,10 +190,15 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
     removeFadedParticles(particlesRef.current, now);
 
     context.clearRect(0, 0, particleLayer.offsetWidth, particleLayer.offsetHeight);
-    drawParticles(context, particlesRef.current, now);
+    drawParticles(context, particlesRef.current, now, particleOriginRef.current);
 
-    frameRef.current =
-      particlesRef.current.length > 0 ? requestAnimationFrame(animateParticles) : null;
+    if (particlesRef.current.length > 0) {
+      frameRef.current = requestAnimationFrame(animateParticles);
+    } else {
+      frameRef.current = null;
+      // The veil may have moved while they flew, when the layer was not refitted.
+      refitParticleLayer();
+    }
   };
 
   // Clears the cover along the pointer's path since the last move, in one pass over the pixels the
@@ -258,6 +268,17 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
     }
   };
 
+  // The veil can move without changing size, which the setup above never sees, so the particle
+  // layer is fitted again before each stroke, on a window resize, and once the last particles fade;
+  // never while particles are still moving.
+  const refitParticleLayer = () => {
+    const cover = coverRef.current;
+    const particleLayer = particleLayerRef.current;
+    if (cover && particleLayer && particlesRef.current.length === 0) {
+      particleOriginRef.current = fitParticleLayer(particleLayer, cover);
+    }
+  };
+
   const handlePointerLeave = () => {
     lastPointRef.current = null;
   };
@@ -282,6 +303,7 @@ export const Veil = forwardRef<VeilHandle, VeilProps>(function Veil(
       ref={wrapperRef}
       className={className}
       style={{ ...WRAPPER_STYLE, ...style }}
+      onPointerEnter={refitParticleLayer}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       onClickCapture={handleClickCapture}
