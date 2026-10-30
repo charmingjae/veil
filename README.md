@@ -2,9 +2,6 @@
 
 A React cover that hides its content until the pointer scratches it away.
 
-[![npm](https://img.shields.io/npm/v/@-3-/veil)](https://www.npmjs.com/package/@-3-/veil)
-[![license](https://img.shields.io/npm/l/@-3-/veil)](./LICENSE)
-
 ```bash
 pnpm add @-3-/veil
 ```
